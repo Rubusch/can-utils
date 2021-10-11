@@ -224,7 +224,7 @@ void print_usage(char *prg)
 	fprintf(stderr, "%s", manual);
 }
 
-void sigterm(int signo)
+void sigterm(int signo __attribute__((unused)))
 {
 	running = 0;
 }
@@ -236,7 +236,7 @@ int main(int argc, char **argv)
 	long currcms = 0;
 	long lastcms = 0;
 	unsigned char quiet = 0;
-	int opt, ret;
+	int opt;
 	struct timeval timeo, start_tv, tv;
 	struct sockaddr_can addr;
 	int i, ifr_name_size = -1;
@@ -313,7 +313,7 @@ int main(int argc, char **argv)
 		print_usage(basename(argv[0]));
 		exit(0);
 	}
-	
+
 	if (quiet)
 		for (i = 0; i < MAX_SLOTS; i++)
 			do_clr(i, ENABLE);
@@ -363,7 +363,7 @@ int main(int argc, char **argv)
 		timeo.tv_sec  = 0;
 		timeo.tv_usec = 10000 * loop;
 
-		if ((ret = select(s+1, &rdfs, NULL, NULL, &timeo)) < 0) {
+		if (select(s+1, &rdfs, NULL, NULL, &timeo) < 0) {
 			//perror("select");
 			running = 0;
 			continue;
