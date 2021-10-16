@@ -248,7 +248,7 @@ int main(int argc, char **argv)
 	int family = PF_CAN, type = SOCK_RAW, proto = CAN_RAW;
 	int extended = 0;
 	int receive = 0;
-	int opt;
+	int opt, ifr_name_size = 0;
 
 	sigaction(SIGINT, &act, NULL);
 	sigaction(SIGTERM, &act, NULL);
@@ -331,7 +331,7 @@ int main(int argc, char **argv)
 	filter->can_mask |= CAN_EFF_FLAG;
 
 	printf("interface = %s, family = %d, type = %d, proto = %d\n",
-	       interface, family, type, proto);
+		interface, family, type, proto);
 
 	s = socket(family, type, proto);
 	if (s < 0) {
@@ -340,7 +340,12 @@ int main(int argc, char **argv)
 	}
 
 	addr.can_family = family;
-	strncpy(ifr.ifr_name, interface, sizeof(ifr.ifr_name));
+	if (strlen(interface) >= IFNAMSIZ) {
+		printf("name of CAN device '%s' is too long!\n", argv[optind]);
+		return 1;
+	}
+	ifr_name_size = strlen(interface);
+	strncpy(ifr.ifr_name, interface, ifr_name_size);
 	if (ioctl(s, SIOCGIFINDEX, &ifr)) {
 		perror("ioctl()");
 		exit(EXIT_FAILURE);
