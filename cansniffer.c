@@ -809,38 +809,36 @@ int readsettings(char* name)
 	int j;
 	bool done = false;
 
-	strncat(fname, name, 29 - strlen(fname)); 
+	strncat(fname, name, 29 - strlen(fname));
 	fd = open(fname, O_RDONLY);
-    
-	if (fd > 0) {
-		idx = 0;
-		while (!done) {
-			if (read(fd, &buf, 29) == 29) {
-				unsigned long id = strtoul(&buf[1], (char **)NULL, 16);
-
-				sniftab[idx].current.can_id = id;
-
-				if (buf[10] & 1)
-					do_set(idx, ENABLE);
-				else
-					do_clr(idx, ENABLE);
-
-				for (j = 7; j >= 0 ; j--) {
-					sniftab[idx].notch.data[j] =
-						(__u8) strtoul(&buf[2*j+12], (char **)NULL, 16) & 0xFF;
-					buf[2*j+12] = 0; /* cut off each time */
-				}
-
-				if (++idx >= MAX_SLOTS)
-					break;
-			}
-			else
-				done = true;
-		}
-		close(fd);
-	}
-	else
+	if (fd <= 0) {
 		return -1;
+	}
+	idx = 0;
+	while (!done) {
+		if (read(fd, &buf, 29) == 29) {
+			unsigned long id = strtoul(&buf[1], (char **)NULL, 16);
+
+			sniftab[idx].current.can_id = id;
+
+			if (buf[10] & 1)
+				do_set(idx, ENABLE);
+			else
+				do_clr(idx, ENABLE);
+
+			for (j = 7; j >= 0 ; j--) {
+				sniftab[idx].notch.data[j] =
+					(__u8) strtoul(&buf[2*j+12], (char **)NULL, 16) & 0xFF;
+				buf[2*j+12] = 0; /* cut off each time */
+			}
+
+			if (++idx >= MAX_SLOTS)
+				break;
+		}
+		else
+			done = true;
+	}
+	close(fd);
 
 	return idx;
 }
