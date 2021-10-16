@@ -244,11 +244,14 @@ int main(int argc, char **argv)
 	};
 	struct ifreq ifr;
 	struct sockaddr_can addr;
-	char *interface = "can0";
+	char interface[IFNAMSIZ];
 	int family = PF_CAN, type = SOCK_RAW, proto = CAN_RAW;
 	int extended = 0;
 	int receive = 0;
 	int opt, ifr_name_size = 0;
+
+	memset(interface, 0, IFNAMSIZ);
+	strcpy(interface, "can0");
 
 	sigaction(SIGINT, &act, NULL);
 	sigaction(SIGTERM, &act, NULL);
@@ -316,9 +319,15 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (argv[optind] != NULL)
-		interface = argv[optind];
-
+	if (argv[optind] != NULL) {
+		ifr_name_size = strlen(argv[optind]);
+		if (ifr_name_size >= IFNAMSIZ) {
+			printf("name of CAN device '%s' is too long!\n", argv[optind]);
+			return 1;
+		}
+		memset(interface, 0, IFNAMSIZ);
+		strncpy(interface, argv[optind], ifr_name_size);
+	}
 	if (extended) {
 		filter->can_mask = CAN_EFF_MASK;
 		filter->can_id  &= CAN_EFF_MASK;
@@ -340,11 +349,6 @@ int main(int argc, char **argv)
 	}
 
 	addr.can_family = family;
-	if (strlen(interface) >= IFNAMSIZ) {
-		printf("name of CAN device '%s' is too long!\n", argv[optind]);
-		return 1;
-	}
-	ifr_name_size = strlen(interface);
 	strncpy(ifr.ifr_name, interface, ifr_name_size);
 	if (ioctl(s, SIOCGIFINDEX, &ifr)) {
 		perror("ioctl()");
