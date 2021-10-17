@@ -124,9 +124,9 @@ static unsigned char binary;
 static unsigned char binary8;
 static unsigned char binary_gap;
 static unsigned char color;
-static char *interface;
 static char *vdl = LDL; /* variable delimiter */
 static char *ldl = LDL; /* long delimiter */
+static struct ifreq ifr;
 
 void print_snifline(int slot);
 int handle_keyb(void);
@@ -232,14 +232,14 @@ void sigterm(int signo)
 int main(int argc, char **argv)
 {
 	fd_set rdfs;
-	int s;
+	int s = -1;
 	long currcms = 0;
 	long lastcms = 0;
 	unsigned char quiet = 0;
 	int opt, ret;
 	struct timeval timeo, start_tv, tv;
 	struct sockaddr_can addr;
-	int i;
+	int i, ifr_name_size = -1;
 
 	signal(SIGTERM, sigterm);
 	signal(SIGHUP, sigterm);
@@ -318,12 +318,16 @@ int main(int argc, char **argv)
 		for (i = 0; i < MAX_SLOTS; i++)
 			do_clr(i, ENABLE);
 
-	if (strlen(argv[optind]) >= IFNAMSIZ) {
+	ifr_name_size = strlen(argv[optind])+1;
+	if (ifr_name_size > IFNAMSIZ) {
 		printf("name of CAN device '%s' is too long!\n", argv[optind]);
 		return 1;
 	}
 
-	interface = argv[optind];
+	memset(&ifr.ifr_name, 0, sizeof(ifr.ifr_name));
+	strncpy(ifr.ifr_name, argv[optind], ifr_name_size);
+
+	addr.can_family = AF_CAN;
 
 	s = socket(PF_CAN, SOCK_RAW, CAN_RAW);
 	if (s < 0) {
@@ -331,11 +335,13 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	addr.can_family = AF_CAN;
-
-	if (strcmp(ANYDEV, argv[optind]) != 0)
-		addr.can_ifindex = if_nametoindex(argv[optind]);
-	else
+	if (strcmp(ANYDEV, ifr.ifr_name) != 0) {
+		if (ioctl(s, SIOCGIFINDEX, &ifr) < 0) {
+			perror("SIOCGIFINDEX");
+			return 1;
+		}
+		addr.can_ifindex = ifr.ifr_ifindex;
+	} else
 		addr.can_ifindex = 0; /* any can interface */
 
 	if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -630,10 +636,10 @@ int handle_timeo(long currcms)
 	if (clearscreen) {
 		if (print_eff)
 			printf("%s%sXX|ms%s-- ID --%sdata ...     < %s # l=%ld h=%ld t=%ld slots=%d >",
-			       CLR_SCREEN, CSR_HOME, vdl, vdl, interface, loop, hold, timeout, idx);
+			       CLR_SCREEN, CSR_HOME, vdl, vdl, ifr.ifr_name, loop, hold, timeout, idx);
 		else
 			printf("%s%sXX|ms%sID %sdata ...     < %s # l=%ld h=%ld t=%ld slots=%d >",
-			       CLR_SCREEN, CSR_HOME, ldl, ldl, interface, loop, hold, timeout, idx);
+			       CLR_SCREEN, CSR_HOME, ldl, ldl, ifr.ifr_name, loop, hold, timeout, idx);
 
 		force_redraw = 1;
 		clearscreen = 0;
