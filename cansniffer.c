@@ -253,7 +253,7 @@ int main(int argc, char **argv)
 		case 'r':
 			if (readsettings(optarg) < 0) {
 				fprintf(stderr, "Unable to read setting file '%s%s'!\n", SETFNAME, optarg);
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 			break;
 
@@ -300,7 +300,7 @@ int main(int argc, char **argv)
 
 		case '?':
 			print_usage(basename(argv[0]));
-			exit(0);
+			exit(EXIT_SUCCESS);
 			break;
 
 		default:
@@ -311,7 +311,7 @@ int main(int argc, char **argv)
 
 	if (optind == argc) {
 		print_usage(basename(argv[0]));
-		exit(0);
+		exit(EXIT_SUCCESS);
 	}
 
 	if (quiet)
@@ -321,7 +321,7 @@ int main(int argc, char **argv)
 	ifr_name_size = strlen(argv[optind])+1;
 	if (ifr_name_size > IFNAMSIZ) {
 		printf("name of CAN device '%s' is too long!\n", argv[optind]);
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	memset(&ifr.ifr_name, 0, sizeof(ifr.ifr_name));
@@ -332,13 +332,13 @@ int main(int argc, char **argv)
 	s = socket(PF_CAN, SOCK_RAW, CAN_RAW);
 	if (s < 0) {
 		perror("socket");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	if (strcmp(ANYDEV, ifr.ifr_name) != 0) {
 		if (ioctl(s, SIOCGIFINDEX, &ifr) < 0) {
 			perror("SIOCGIFINDEX");
-			return 1;
+			exit(EXIT_FAILURE);
 		}
 		addr.can_ifindex = ifr.ifr_ifindex;
 	} else
@@ -346,7 +346,7 @@ int main(int argc, char **argv)
 
 	if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		perror("connect");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	gettimeofday(&start_tv, NULL);
@@ -387,7 +387,7 @@ int main(int argc, char **argv)
 	printf("%s", CSR_SHOW); /* show cursor */
 
 	close(s);
-	return 0;
+	exit(EXIT_SUCCESS);
 }
 
 void do_modify_sniftab(unsigned int value, unsigned int mask, char cmd)
